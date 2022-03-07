@@ -1,0 +1,748 @@
+# Dplyr
+
+```{r 04_setup, include=FALSE, purl=FALSE}
+knitr::opts_chunk$set(eval = T, message = F, warning = F)
+```
+
+```{r message=F}
+library(tidyverse)
+```
+
+
+## Data Frame
+
+```{r 04_dataframe}
+tb_df <- data.frame(
+  id = 1:5,
+  height = c(1.7, 1.7, 1.8, 1.9, 2.0),
+  weight = c(70 , 73 , 80 , 100, 95)
+)
+tb_df
+
+# Derived variable: Body Mass Index
+tb_df$bmi <- tb_df$weight / (tb_df$height)^2
+tb_df
+```
+
+
+
+## Tibble
+
+```{r 04_tibble}
+## NSE: Non Standard Evaluation
+tb <- tibble(
+  id = 1:5,
+  height = c(1.7, 1.7, 1.8, 1.9, 2.0),
+  weight = c(70 , 73 , 80 , 100, 95),
+  # Derived variable: Body Mass Index
+  bmi    = weight / height^2
+)
+
+tb
+
+```
+
+### Data Frame to Tibble conversion
+
+```{r 04_df_to_tibble}
+## cast to tbl
+iris_tbl <- as_tibble(iris)
+iris_tbl
+```
+
+Save column names:
+
+```{r}
+## rownames as a column
+rownames_to_column(mtcars, var = 'car')
+
+mtcars_tbl <- as_tibble(rownames_to_column(mtcars, var = 'car'))
+mtcars_tbl
+
+```
+
+
+
+## Data import
+
+
+### Read a CSV file
+
+
+CSV: comma separated values file. The first row contains the column names:
+
+```{bash}
+head data/dc-wikia-data.csv
+```
+
+
+```{r}
+# with a specific delimiter
+dc <- read_delim("data/dc-wikia-data.csv", delim = ",")
+
+# with a standard delimiter
+dc <- read_csv("data/dc-wikia-data.csv")
+
+# with a predefined column type
+dc <- read_csv('data/dc-wikia-data.csv',
+               col_types = cols(
+                 page_id = col_integer(),
+                 name = col_character(),
+                 urlslug = col_character(),
+                 ID = col_factor(),
+                 ALIGN = col_factor(),
+                 EYE = col_factor(),
+                 HAIR = col_factor(),
+                 SEX = col_factor(),
+                 GSM = col_character(),
+                 ALIVE = col_character(),
+                 APPEARANCES = col_double(),
+                 `FIRST APPEARANCE` = col_character(),
+                 YEAR = col_double()
+               ))
+
+```
+
+### Column names
+
+Column names standardization: all lower case.
+
+```{r 04_column_names}
+# Extraction
+old_colnames <- colnames(dc)
+old_colnames
+
+# manipulation
+new_colnames <- tolower(old_colnames)
+new_colnames
+
+# substitution
+colnames(dc) <- new_colnames
+
+# result
+colnames(dc) 
+```
+
+or a short version for the whole process:
+
+```{r}
+colnames(dc) <- tolower(colnames(dc))
+```
+
+
+### Save to Rds format
+
+```{r eval=FALSE}
+# write to Rds
+saveRDS(dc, "data/dc-wikia-data.Rds")
+# read from Rds
+dc <- readRDS("data/dc-wikia-data.Rds")
+```
+
+
+## Base operations
+
+### Simple selection
+
+```{r}
+# select columns: name, appearances, sex
+dc_2 <- select(dc, name, appearances, sex)
+
+dc_2
+```
+
+
+### Simple filter
+
+```{r}
+# get the "Female Characters"
+dc_2_female <- filter(dc_2, sex == "Female Characters")
+
+```
+
+### Pipe 
+
+Two operations in one:
+
+```{r}
+filter(select(dc, name, appearances, sex), 
+       sex == "Female Characters")
+```
+
+Two operations in one pipeline:
+
+```{r}
+dc %>%
+  select(name, appearances, sex) %>% 
+  filter(sex == "Female Characters")
+```
+
+
+RStudio shortcut to write the *pipe* ` %>% `: CTRL + SHIFT + m
+
+
+### Column Selection (select)
+
+#### Basic selections
+
+```{r}
+# select a range
+dc %>% 
+  select(name, id:year) 
+
+# unselect
+dc %>% 
+  select(-page_id, -urlslug)
+```
+
+
+```{r}
+# rename column 'id' to 'secret_id'
+dc %>% 
+  rename(secret_id = id)
+```
+
+#### Name matching
+
+```{r}
+colnames(dc)
+```
+
+```{r}
+# match the name
+dc %>% 
+  select(name, contains("appearance"))
+
+dc %>% 
+  select(ends_with("id"))
+
+dc %>% 
+  select(starts_with("id"))
+
+dc %>% select(matches("appearance.*"))
+```
+
+#### Select by type (where)
+
+```{r}
+dc %>% select(where(is.factor))
+
+dc %>% select(where(is.character))
+```
+
+
+
+### Unique values (distinct)
+
+```{r}
+dc %>% 
+  distinct(id)
+
+dc %>% 
+  select(id, sex) %>% 
+  distinct()
+```
+
+
+`distinct` is similar to the base R function `unique`, but the latter works on vectors, not on data frames.
+
+
+### Row Filter (filter)
+
+```{r}
+# Single condition
+# Example: 
+# get "Female Characters" only
+dc %>% filter(sex == "Female Characters")
+
+# Match multiple conditions (all of them)
+# Example: 
+# get the "Female Characters" AND with 'Blond Hair'
+dc %>% filter(sex == "Female Characters", hair == "Blond Hair")
+# or:
+dc %>% filter(sex == "Female Characters" & hair == "Blond Hair")
+
+# Match one of the alternatives (any of them)
+# Example: 
+# get the "Female Characters" OR with 'Blond Hair'
+dc %>% filter(sex == "Female Characters"  | hair == "Blond Hair")
+```
+
+
+```{r}
+# Conditions on numbers
+# Example: 
+# get characters that appeared a greater or equal number of times than 1000 
+dc %>% filter(appearances >= 1000)
+
+# Example: 
+# within a given interval (inclusive)
+dc %>% filter(900 <= appearances, appearances <= 1000)
+# or
+dc %>% filter(between(appearances, 900, 1000))
+
+# Example: 
+# outside a given interval
+dc %>% filter(appearances < 900 | 1000 < appearances)
+# or
+dc %>% filter( ! between(appearances, 900, 1000))
+
+```
+
+
+```{r}
+# set-in operator
+
+# Example: 
+# 'appearances' has a value in a vector of possible real numbers
+dc %>% filter(appearances %in% c(900, 1000))
+
+# Example: 
+# 'hair' has a value in a vector of possible strings
+dc %>% filter(hair %in% c('Violet Hair', 'Pink Hair'))
+```
+
+
+```{r}
+# * FILTER EXTRAS 
+
+# take rows by their position index
+dc %>% slice(5:10)
+
+# Extract a sample of 'n' lines
+dc %>% sample_n(3)
+
+# Extract a fraction of all lines
+dc %>% sample_frac(0.1)
+
+# Re-sample repeating lines
+dc %>% sample_frac(1.5, replace = TRUE)
+
+# if you want to fix the random state of the random sampling
+set.seed(123)
+dc %>% sample_n(3)
+```
+
+
+### Row sorting (arrange)
+
+Sort using a column as a criteria:
+
+```{r}
+dc %>%
+  select(name, appearances, sex) %>% 
+  filter(sex == "Female Characters") %>% 
+  arrange(appearances)
+```
+
+
+
+```{r}
+# sort by one column
+dc_2 %>% arrange(appearances)
+
+# sort by one column in descending order
+dc_2 %>% arrange(desc(appearances))
+
+# sort by two criteria (the first has the precedence)
+dc %>% arrange(sex, desc(appearances))
+```
+
+
+## Transform columns (mutate)
+
+### Create a new column
+
+```{r}
+dc %>% 
+  mutate(age = 2021 - year) %>% 
+  arrange(desc(age)) %>% 
+  select(name, age)
+```
+
+
+```{r}
+# install.packages("nycflights13")
+library(nycflights13)
+
+flights %>% 
+  select(dep_delay, arr_delay) %>% 
+  mutate(time_gain = dep_delay - arr_delay)
+```
+
+
+### Segment data values into bins
+
+In order to create a categorical variable from a continuous variable you need to segment and sort data values into bins.
+You can do that with the `case_when` or the `cut` functions.
+
+
+#### 'cut' Example
+
+
+Here a `cut` example. `cut` splits a variable in classes, each of them correspond to an interval of values.
+
+You can automatically split the range of `year` in a number of classes:
+
+```{r}
+# You can automatically split the range of `year` in a number of classes:
+dc_2 <- dc %>% 
+  mutate(classe = cut(year, breaks = 10)) %>% 
+  select(name, year, classe)
+dc_2
+```
+
+Or you can provide a set of separators (`breaks`) and labels for the intervals. Mind the number of breaks should be one more than the labels.
+
+```{r}
+# separa le classi sulla variabile separatori e attribuisci la corretta etichetta.
+breaks <- 0:10 * 10L + 1900L
+labels <- paste('years', as.character(0:9 * 10L))
+dc_2 <- dc %>% 
+  mutate(classe = cut(year,
+                      breaks = breaks, 
+                      labels = labels)) %>%
+  select(name, year, classe)
+dc_2
+```
+
+
+Detail. Here an extract of the procedure, the cut function applied on a single number:
+
+```{r}
+cut(1939,
+    breaks = breaks, 
+    labels = labels)
+# 1939 in in the interval between the 4th and 5th breaks
+between(1939, breaks[4], breaks[5])
+# the selected labels will be the 4th
+labels[4]
+```
+
+
+Documentation:
+
+```{r}
+help(cut)
+```
+
+
+
+#### `case_when` example
+
+```{r}
+flights %>% 
+  select(arr_delay) %>% 
+  mutate(delay_class = case_when(
+    arr_delay > 1000 ~ "big-delay",
+    arr_delay < 1000 & arr_delay > 0 ~ "delay",
+    arr_delay <= 0 ~ "no-delay",
+    TRUE ~ NA_character_
+  ))
+```
+
+
+
+
+
+## Aggregate rows (summarise)
+
+### Scalar-returning aggregations
+
+`summarise` works with functions that return a scalar:
+
+$$
+R^n \to  R
+$$
+
+For example, the `mean` function take a vector and returns a single value
+
+```{r}
+mean(flights$arr_delay, na.rm = TRUE)
+```
+
+
+### Aggregate to a scalar
+
+Prepare the dataset:
+
+```{r}
+# install.packages('nycflights13')
+library(nycflights13)
+
+flights_tiny <- 
+  flights %>% 
+  select(dep_delay, arr_delay, carrier, origin, dest)
+flights_tiny
+```
+
+
+Calculate a single aggregation:
+
+```{r}
+flights_tiny %>% 
+  summarise(mean_arr_delay = mean(arr_delay, na.rm = TRUE))
+```
+
+Calculate multiple aggregations:
+
+```{r}
+flights_tiny %>% 
+  summarise(mean_arr_delay   = mean(arr_delay, na.rm = TRUE),
+            sd_arr_delay     = sd(arr_delay, na.rm = TRUE),
+            mean_dep_delay   = mean(dep_delay, na.rm = TRUE),
+            median_arr_delay = median(arr_delay, na.rm = TRUE),
+            first_quartile_arr_delay  = quantile(arr_delay, probs = 0.25, na.rm = TRUE),
+            second_quartile_arr_delay = quantile(arr_delay, probs = 0.5, na.rm = TRUE))
+```
+
+
+
+### Vector-returning aggregations
+
+An example is the `quantile` function that return a vector of length equals to `probs`:
+
+```{r}
+vec <- 1:11
+vec
+quantile(vec, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+```
+
+Here the application to `arr_delay`:
+
+```{r}
+arr_delay <- flights_tiny$arr_delay
+
+# R^n -> R^m
+quantile(arr_delay, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+```
+
+### Aggregate to a vector
+
+`summarise` works also with functions that return a vector of a length different from the starting length. (If the function returns a vector of the same length you will probably want to use `mutate`)
+
+```{r}
+# summarise restitutisce questa volta un tibble di 3 righe
+flights_tiny %>% 
+  summarise(quartile_value = quantile(arr_delay, probs = c(0.25, 0.5, 0.75), na.rm = TRUE), 
+            quartile_key   = names(quartile_value)) %>% 
+  select(quartile_key, quartile_value)
+```
+
+
+
+## Compute per groups
+
+### Aggregation per groups
+
+Aggregate per a single variable group:
+
+```{r}
+flights %>% 
+  group_by(carrier) %>%
+  summarise(mean_arr_delay = mean(arr_delay, na.rm = TRUE)) 
+```
+
+That aggregation has been made once per each of these groups:
+
+```{r}
+flights %>% 
+  distinct(carrier)
+```
+
+
+
+Aggregate per groups generated by multiple variables:
+
+```{r}
+flights %>% 
+  group_by(carrier, origin, dest) %>%
+  summarise(mean_arr_delay = mean(arr_delay, na.rm = TRUE)) %>% 
+  ungroup()
+```
+
+
+That aggregation has been made once per each of these groups:
+
+```{r}
+flights %>% 
+  distinct(carrier, origin, dest)
+```
+
+
+
+### Grouping attribute
+
+Group is an attribute into the data frame, not a real split. It can be removed with the `ungroup()` function.
+
+```{r}
+# summarise remove only one grouping variable by default
+# you can read the 'groups' attribute in the tibble
+tbl <- flights %>% 
+  group_by(carrier, origin, dest) %>%
+  summarise(mean_arr_delay = mean(arr_delay, na.rm = TRUE)) 
+
+# before doing another aggregation you may want to 'ungroup()'
+tbl %>% 
+  ungroup() %>% 
+  summarise(mean_arr_delay = mean(mean_arr_delay, na.rm = T))
+```
+
+
+```{r}
+# here you see that the grouping attribute can be stored with the tibble variable itself
+grouped_flights <- flights %>% 
+  group_by(carrier) 
+
+grouped_flights %>% 
+  summarise(mean_arr_delay = mean(arr_delay, na.rm = TRUE))
+```
+
+
+
+### Transformation per group
+
+```{r}
+df <- tibble(
+  warehouse = rep(LETTERS[1:5], times = 5),
+  time = rep(1:5, each = 5),
+  total_quantity = as.integer(runif(5 * 5, min = 1, max = 100))
+) %>% 
+  arrange(warehouse, time)
+df
+```
+
+- `warehouse` id of the facility where quantity is stored.
+- `time` the number of the day for example
+- `total_quantity` the number of items stored in the warehouse at that time.
+
+The task now, is to find the `variation` of the number of items per day:
+
+```{r}
+df %>% 
+  group_by(warehouse) %>% 
+  mutate(
+    previous_total_quantity = lag(total_quantity),
+    variation = total_quantity - previous_total_quantity)
+```
+
+Remarks:
+
+- every day 1 the previous_total_quantity is `NA`, and therefore the `variation` (because it is the difference of a number and a `NA`)
+- `group_by` is mandatory to keep different `warehouse`s separated each others.
+
+
+
+
+
+## Combine multiple data frames
+
+
+### Joins
+
+Joins are a way to merge table based on the correspondence on a key.
+
+```{r}
+library(tidyverse)
+```
+
+Let us a couple of example tables. Let us define a [foreign-key](https://en.wikipedia.org/wiki/Foreign_key) a column whose values have a correspondence in another table. This creates a relationship among two tables.
+
+```{r}
+# Main table, where
+# 'id' id number
+# 'lower' a foreign key
+main_tbl <- tibble(
+  id = c(1:2, 3, 4:6), #1:5,
+  lower = c(letters[1:2], 'non-letter', letters[4:6])
+)
+main_tbl
+```
+
+
+And another that contains (usually all) the occurrences of the foreign-key:
+
+```{r}
+# The table of letters 
+# 'lower' list all the lower case letters
+# 'upper' an attribute to the letters, for the example case a upper case copy of the letter
+letter_tbl <- tibble(
+  lower = letters,
+  upper = LETTERS
+)
+letter_tbl
+```
+
+
+```{r}
+# full-join
+
+main_tbl %>% 
+  full_join(letter_tbl)
+```
+
+
+```{r}
+# inner-join
+
+main_tbl %>% 
+  inner_join(letter_tbl)
+```
+
+
+```{r}
+# left-join
+
+main_tbl %>% 
+  left_join(letter_tbl)
+```
+
+
+```{r}
+# right-join
+
+main_tbl %>% 
+  right_join(letter_tbl)
+
+# inverting the order a `right_join` return the same as a `left_join`
+letter_tbl %>% 
+  right_join(main_tbl)
+
+
+```
+
+
+
+### Split and Unite data frames
+
+#### Bind rows
+
+```{r}
+mtcar_list <- split(mtcars, as.character(mtcars$cyl))
+mtcars_cyl_6 <- mtcar_list[["6"]]
+mtcars_cyl_8 <- mtcar_list[["8"]]
+```
+
+
+
+These two data frames have the same schema, and their rows can be concatenated:
+
+```{r}
+bind_rows(mtcars_cyl_6, mtcars_cyl_8)
+```
+
+
+
+#### Bind columns
+
+```{r}
+mtcars_mpg_cyl <- select(mtcars, mpg, cyl)
+mtcars_disp_hp_drat <- select(mtcars, hp, drat, wt)
+```
+
+These two dataframes have the same number of rows, therefore their columns can be binded:
+
+```{r}
+bind_cols(mtcars_disp_hp_drat, mtcars_mpg_cyl)
+```
+

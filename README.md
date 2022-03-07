@@ -1,4 +1,4 @@
-## R for Data Science 2022
+## R for Data Science
 
 This is the repository of the course.
 
