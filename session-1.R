@@ -54,6 +54,7 @@ mt_tbl
 
 # readr -------------------------------------------------------------------
 
+library(readr)
 
 dc <- read_delim("data/dc-wikia-data.csv", delim = ",")
 

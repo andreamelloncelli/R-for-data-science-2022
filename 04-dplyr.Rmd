@@ -83,6 +83,9 @@ dc <- read_delim("data/dc-wikia-data.csv", delim = ",")
 # with a standard delimiter
 dc <- read_csv("data/dc-wikia-data.csv")
 
+# get the specifications used to read the csv
+spec(dc)
+
 # with a predefined column type
 dc <- read_csv('data/dc-wikia-data.csv',
                col_types = cols(
