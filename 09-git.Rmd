@@ -1,0 +1,83 @@
+# Git and Github
+
+## RStudio Operations with CLI
+
+CLI means Command Line Interface, which is the "Command Prompt" on Windows, the Bash on Linux and MacOS.
+
+```sh
+# get the status
+git status
+# upload the latest modifications
+git push
+# download the latest modifications
+git pull
+# history
+git log
+# go to the branch main
+git checkout main
+# create a new branch
+git branch work-in-progress
+# move on that branch
+git checkout work-in-progress
+```
+
+
+
+## Troubleshooting via CLI
+
+
+### Pull
+
+`pull` is the equivalent of:
+
+```sh
+# download the latest modifications, without using them
+git fetch
+# merge you main bronch with the remote version
+git merge origin/main
+```
+
+Therefore if a conflict happens during a `git pull`, it is a merging conflict. You can abort the merge falling back to your version of main with:
+
+```sh
+git merge --abort
+```
+
+or decide to use other's version of a file with:
+
+```sh
+git checkout --theirs path/to/file
+git add path/to/file
+git merge --continue
+```
+
+See [this post](https://stackoverflow.com/questions/10697463/resolve-git-merge-conflicts-in-favor-of-their-changes-during-a-pull) for more information.
+
+
+If you want to lose your latest commits (not only the working directory changes) and use the upstream version (origin/main version) you can run:
+
+```sh
+# backup your main branch
+git branch main_bak
+# update to 'origin/main'
+git fetch
+# BEWARE THIS IS A DESTRUCTIVE OPERATION IF YOU DID NOT MAKE
+# THE 'main_bak' branch correctly:
+git reset --hard origin/main
+```
+
+To find your old version:
+
+```sh
+git checkout main_bak
+```
+
+
+
+## References
+
+- Configure RStudio and Git guide: <https://www.geo.uzh.ch/microsite/reproducible_research/post/rr-rstudio-git/>
+- Learn git commands used by RStudio: <https://rviews.rstudio.com/2020/04/23/10-commands-to-get-started-with-git/>
+- [Git cheatsheet](https://phoenixnap.com/kb/git-commands-cheat-sheet)
+- Learn git visually: <http://git-school.github.io/visualizing-git/>
+- Other resources: <https://try.github.io/>
