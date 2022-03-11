@@ -2,12 +2,12 @@
 
 ## Git setup
 
-Set up your git signature globally (for all repositories):
+Set up your commit signature globally (for all repositories):
 
 ```sh
  
-# Customize your git signature
-# copy and paste on Terminal
+# Customize your git signature,
+# the copy, paste and execute on Terminal
 
 git config --global user.name "Andrea Melloncelli"
 git config --global user.email andrea@vanlog.it
@@ -15,13 +15,13 @@ git config --global user.email andrea@vanlog.it
 
 See also: https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup
 
-## add a remote to the repository
+## Add a remote to your locally created repository
 
-Prerequisite: create a new RStudio project with git, with at least a commit
+Prerequisite: create a new RStudio project with git, with at least one commit.
 
+In any empty github repository web page you can find these instructions.
 
-From the empty github repository:
-Advice: select HTTPS protocol
+Advice: select HTTPS protocol.
 
 ```sh
 # or push an existing repository from the command line
@@ -32,12 +32,17 @@ git remote rm origin
 git remote add origin https://github.com/andreamelloncelli/R-for-data-science-2022-collaboration.git
 git branch -M main
 git push -u origin main
-
-# verify the correct configuration
-git remote -v
 ```
 
-## RStudio Operations with CLI
+You can verify the correct remote's configuration:
+
+```sh
+git remote -v
+#> origin  https://github.com/andreamelloncelli/R-for-data-science-2022-collaboration.git (fetch)
+#> origin  https://github.com/andreamelloncelli/R-for-data-science-2022-collaboration.git (push)
+```
+
+## Other CLI Git Operations
 
 CLI means Command Line Interface, which is the "Command Prompt" on Windows, the Bash on Linux and MacOS.
 
@@ -65,12 +70,12 @@ git checkout work-in-progress
 
 ### Pull
 
-`pull` is the equivalent of:
+Remark: `pull` is the equivalent of the sequence of fetch and merge operations:
 
 ```sh
 # download the latest modifications, without using them
 git fetch
-# merge you main bronch with the remote version
+# merge you "main" branch with the remote version ("origin/main")
 git merge origin/main
 ```
 
@@ -80,7 +85,7 @@ Therefore if a conflict happens during a `git pull`, it is a merging conflict. Y
 git merge --abort
 ```
 
-or decide to use other's version of a file with:
+or decide to use others version of a file with:
 
 ```sh
 git checkout --theirs path/to/file
@@ -88,10 +93,13 @@ git add path/to/file
 git merge --continue
 ```
 
+or manually fix the conflict and then commit.
+
+
 See [this post](https://stackoverflow.com/questions/10697463/resolve-git-merge-conflicts-in-favor-of-their-changes-during-a-pull) for more information.
 
 
-If you want to lose your latest commits (not only the working directory changes) and use the upstream version (origin/main version) you can run:
+If you want to lose your latest commits (not only the working directory changes) and use the upstream version (origin/main version) you can revert to the HEAD version:
 
 ```sh
 # backup your main branch
@@ -118,3 +126,4 @@ git checkout main_bak
 - [Git cheatsheet](https://phoenixnap.com/kb/git-commands-cheat-sheet)
 - Learn git visually: <http://git-school.github.io/visualizing-git/>
 - Other resources: <https://try.github.io/>
+- Git Flow: <https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow>

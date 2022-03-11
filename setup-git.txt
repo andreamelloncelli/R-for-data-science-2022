@@ -1,4 +1,6 @@
-
+ 
+# git setup ------------------------------------------------------ 
+ 
 # Customize your git signature
 # copy and paste on Terminal
 
@@ -8,3 +10,30 @@ git config --global user.email andrea@vanlog.it
 
 # see also
 # https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup
+
+
+# add a remote to the repository ---------------------------------------
+
+# Prerequisite: create a new RStudio project with git, with at least a commit
+
+
+# From the empty github repository:
+# Advice: select HTTPS protocol
+# or push an existing repository from the command line
+
+git remote rm origin
+
+git remote add origin https://github.com/andreamelloncelli/R-for-data-science-2022-collaboration.git
+git branch -M main
+git push -u origin main
+
+# verify the correct configuration
+git remote -v
+
+
+User > settings
+
+
+
+
+
