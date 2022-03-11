@@ -1,5 +1,42 @@
 # Git and Github
 
+## Git setup
+
+Set up your git signature globally (for all repositories):
+
+```sh
+ 
+# Customize your git signature
+# copy and paste on Terminal
+
+git config --global user.name "Andrea Melloncelli"
+git config --global user.email andrea@vanlog.it
+```
+
+See also: https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup
+
+## add a remote to the repository
+
+Prerequisite: create a new RStudio project with git, with at least a commit
+
+
+From the empty github repository:
+Advice: select HTTPS protocol
+
+```sh
+# or push an existing repository from the command line
+
+# just in case, remove 'origin' if it already exists
+git remote rm origin
+
+git remote add origin https://github.com/andreamelloncelli/R-for-data-science-2022-collaboration.git
+git branch -M main
+git push -u origin main
+
+# verify the correct configuration
+git remote -v
+```
+
 ## RStudio Operations with CLI
 
 CLI means Command Line Interface, which is the "Command Prompt" on Windows, the Bash on Linux and MacOS.
