@@ -1,0 +1,10 @@
+
+# Customize your git signature
+# copy and paste on Terminal
+
+git config --global user.name "Andrea Melloncelli"
+git config --global user.email andrea@vanlog.it
+
+
+# see also
+# https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup
