@@ -11,13 +11,18 @@ usethis::use_git_config(
 )
 usethis::use_git()
 
+
+# * create development folder -----------------------------------------------
+
 # avoid problem with the dev scripts: dev/package-utility.R (this file)
 dir.create("dev")
 # save this file in `dev` as `setup.R`
 usethis::use_build_ignore("dev")
 # now you can save or move this file in "dev"
 
-# Fill in the DESCRIPTION file
+
+# * Fill in the DESCRIPTION file ---------------------------------------------
+
 # rstudioapi::navigateToFile( "DESCRIPTION" )
 usethis::use_description(
   list(
@@ -30,7 +35,7 @@ usethis::use_description(
 usethis::use_lgpl_license()       # You can set another license here
 usethis::use_tidy_description()   # sort fields and packages
 
-## Common tasks
+## * Common tasks -----------------------------------------------------------
 usethis::use_readme_md( open = FALSE )
 # usethis::use_code_of_conduct()
 # usethis::use_lifecycle_badge( "Experimental" )
@@ -45,11 +50,15 @@ usethis::use_readme_md( open = FALSE )
 # Develop -----------------------------------------------------------------
 
 
-## Add a package
+# * Add a dependency ------------------------------------------------------
+
 usethis::use_package( "dplyr" )
 # remeber to add it to ROXYGEN or NAMESPACE:
 #' @import dplyr  # ROXYGEN
 #' import(dplyr)  # NAMESPACE
+
+
+# * Enable Roxygen --------------------------------------------------------
 
 ## If you want to use roxygen, enable ROXYGEN in the project.
 # Menu: tools > Project options > build tools > generate the documentation with roxygen
@@ -58,26 +67,27 @@ devtools::document() # to fill NAMESPACE and documentation with ROXYGEN comments
 # or roxygen2::roxygenise() # converts roxygen comments to .Rd files.
 # or [Ctrl + Shift + D] in RStudio
 
-## Build or load
+# * Build or load ---------------------------------------------------------
 # Load the package [CTRL + SHIFT + L] or install-and-reload [CTRL + SHIFT + B]
 
 ## Check the package for Cran or [CTRL + SHIFT + E]
 devtools::check(document = FALSE) # check the package
 
-## Add internal datasets
+# * Add internal datasets -------------------------------------------------
 ## If you want to provide data along with your package
 usethis::use_data_raw( name = "my_dataset", open = FALSE )
 
-## Tests
+# * Add Tests -------------------------------------------------------------
 ## Add one line by test you want to create
 usethis::use_test( "hello" )
 
-## Vignette
+# * Add Vignettes --------------------------------------------------------
 usethis::use_vignette("ThisTidyPackage")
 devtools::build_vignettes()
 # Install the package and see it with `vignette("ThisTidyPackage")`
 # List your vignettes: vignette(package = 'cancRFDS')
 # Install your package manually: devtools::install(build_vignettes = TRUE)
+
 
 # Deploy ------------------------------------------------------------------
 
