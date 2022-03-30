@@ -1,0 +1,366 @@
+# Parallel Programming
+
+```{r 11_setup, include=FALSE, purl=FALSE}
+knitr::opts_chunk$set(eval = T)
+```
+
+```{r message=FALSE, include=FALSE}
+library(foreach)
+library(purrr)
+library(dplyr)
+```
+
+
+## Premise
+
+This manual is compiled with little data. In order to see the time gain of using parallel programming rise the number of `points`
+
+## Introduction
+
+`rnd_couple` is a function that generates a point in the square: a couple (x,y) where each coordinates is randomly extracted from a uniform distribution between (-1, 1). Applying the `rnd_couple` n times you get n random points.
+
+
+
+```{r 11_set n}
+n <- 10^3 #10^5
+```
+
+
+```{r 11_set big n, eval=FALSE, include=FALSE}
+n <- 10^5
+```
+
+
+```{r 11_points generation}
+library(purrr)
+
+rnd_couple <- function(x) {
+  c(x = runif(1, min = -1, max = 1),
+    y = runif(1, min = -1, max = 1))
+}
+
+# generates 'n' random points.
+points <- lapply(seq_len(n), rnd_couple)
+```
+
+Now to the number of points inside the circle. Applying the `in_cicle` function to a point it returns `TRUE` (which counts 1 in a sum) if the point is inside the circle, `FALSE` (which counts 0 in a sum) otherwise. Given the total number of points inside the circle (`count`) and the total number of points (`total`), the function `counter_to_pi` returns the value of Pi.
+
+```{r 11_functions}
+in_circle <- function(point) {
+  point[['x']]^2 + point[['y']]^2 < 1
+}
+
+counter_to_pi <- function(count, total) {
+  count/total * 4
+}
+```
+
+## The algorithm
+
+### Sequential
+
+This for loop counts the points inside the circle in variable `counter`. But the second operation in each step is non parallelizable, because each step depends on the previous one in the value of `counter`.
+
+```{r 11_first sequential for-loop}
+counter <- 0
+for (point_idx in seq_along(points)) {
+  point <- points[[point_idx]]
+  counter <- counter + in_circle(point)   # non parallelizable: each steps depend on the previous one in the value of 'counter'
+}
+counter_to_pi(counter, n)
+```
+
+
+### Split the algorithm
+
+In order to parallelize the algorithm, it is necessary to split the for loop in two. The first loop in the following code is parallelizable, but still is running sequentially because the `for` statement is always sequential. The second has other requirements to be parallelizable (see below the specific section).
+
+```{r 11_split}
+## ideally a map or lapply
+are_points_in_circle <- numeric(n)
+for (point_idx in seq_along(points)) {
+  point <- points[[point_idx]]
+  are_points_in_circle[[point_idx]] <- in_circle(point)
+}
+
+## ideally a reduce
+counter <- 0
+for (is_point_in_circle in are_points_in_circle) {
+  counter <- counter + is_point_in_circle
+}
+counter_to_pi(counter, n)
+```
+
+
+### For to map
+
+Here the two loops are re-written as map-reduce operations. `map` is very similar to `lapply`, both of them are sequential, but they have a multi-core counterpart.
+
+```{r 11_for-loop-to-map-reduce}
+are_points_in_circle <- map(points, in_circle)
+counter <- reduce(are_points_in_circle, `+`)
+counter_to_pi(counter, n)
+
+# in a pipeline
+map(points, in_circle) %>%
+  reduce(`+`) %>%
+  counter_to_pi( n)
+```
+
+
+
+
+## Parallelize the map
+
+### mclapply
+
+Here `lapply` is substituted by `mclapply` which does the same work but it runs in parallel.
+
+```{r 11_mclapply_dependencies, include=FALSE}
+library(tidyverse)
+library(tictoc)
+# library(parallel)   # loading parallel and doSNOW in the same process conflicts
+```
+
+
+```{r 11_in_circle_heavy, eval=FALSE}
+# This is a simple case, you can appreciate more the effect of the parallelization 
+# with a longer function to be parallelized. In order to do that you can create 
+# a more time consuming function:
+#
+# heavier in_circle
+in_circle_heavy <- function(point) {
+  # just to make this function taking longer
+  for (i in seq_len(300)) {
+    point[['x']]^2 + point[['y']]^2 < 1
+  }
+  # the actual result
+  point[['x']]^2 + point[['y']]^2 < 1
+}
+# substitute `in_circle` with the heavier one
+in_circle <- in_circle_heavy
+```
+
+
+```{r 11_mclapply}
+tic()
+lapply(points, in_circle) %>%
+  reduce(`+`) %>% 
+  counter_to_pi(n)
+toc()
+
+tic()
+parallel::mclapply(points, in_circle, mc.cores = 4, mc.preschedule = T) %>%
+  reduce(`+`) %>% 
+  counter_to_pi(n)
+toc()
+```
+
+
+```{r 11_mclapply_benchmark}
+# install.packages("bench")
+bench::mark(
+  iterations = 3, memory = FALSE, check = FALSE, filter_gc = FALSE,
+  lapply = lapply(points, in_circle),
+  mclapply = parallel::mclapply(points, in_circle, mc.preschedule = T, mc.cores = 4)
+)
+```
+
+
+
+## doSNOW Montecarlo
+
+
+### doSNOW Library
+
+This is a library which is more complex than parallel and is fully compatible with Linux, Windows and MacOS systems.
+
+First of all, we need to create and register a cluster. `cluster` is the object that holds the information about what type of infrastructure will execute the code. When you are done you need to shut down this cluster with `stopCluster`.
+
+`parLapply` is the `mcalpply` equivalent for doSNOW. It takes the `cluster` object as argument.
+
+
+### Single core example
+
+```{r 11_doSnow library, message=FALSE}
+library(doSNOW)
+```
+
+Create the cluster with `1` core:
+
+```{r 11_doSnow framework single core}
+cluster <- makeCluster(1, type = "SOCK")
+registerDoSNOW(cluster)
+
+# Some useful information about the cluster
+getDoParWorkers()
+getDoParRegistered()
+getDoParName()
+getDoParVersion()
+
+tic()
+# like parallel::mclapply(). mc.preshedule=T seems to be the default here.
+snow::parLapply(cl = cluster,
+                x = points,
+                fun = in_circle) %>%
+  reduce(`+`) %>% 
+  counter_to_pi(n)
+toc()
+
+stopCluster(cluster)
+```
+
+### Multi core example
+
+We are comparing the time of `lapply` (sequential) with `parLapply` (multi-core). The function `parallel::detectCores()` return the number of CPUs available on this hardware.
+
+```{r 11_mclapply in doSNOW}
+# library(doSNOW)
+
+n_cpus <- parallel::detectCores()
+cluster <-  makeCluster(n_cpus, type = "SOCK")
+registerDoSNOW(cluster)
+
+
+# sequential
+tic()
+lapply(points, in_circle) %>%
+  reduce(`+`) %>% 
+  counter_to_pi( n)
+toc()
+
+tic()
+# like mclapply(). mc.preshedule=T seems to be the default here.
+snow::parLapply(cl = cluster,
+          x = points,
+          fun = in_circle) %>%
+  reduce(`+`) %>% 
+  counter_to_pi( n)
+toc()
+
+
+stopCluster(cluster)
+```
+
+
+
+## Parallelize the reduce operation
+
+It is possible parallelize the reduce operation in case the reduce operation is associative (see slides).
+
+In order to do that two nested map-reduce cicles will be used.
+
+Let us define some useful functions:
+
+```{r 11_in_circle and reduce}
+# apply in_circle and reduce
+# inner map-reduce level: sequential
+in_circle_and_reduce <- function(points) {
+  lapply(points, in_circle) %>% 
+    reduce(`+`) 
+}
+```
+
+
+### Split the dataset
+
+With the function `snow::splitList`, you can split the long `points` list in to a number of pieces equals to the number or cluster CPUs you want to use. Each one of these groups contains an almost equal part of the total and it will feed a single sequential process. These groups will be run in parallel.
+
+```{r eval=FALSE, include=FALSE}
+# split points in n groups
+group_points <- function(points, n_groups) {
+  split(points, sort(seq_along(points) %% n_groups))
+}
+
+point_groups <- group_points(points, 3)
+str(point_groups, max.level = 1)
+```
+
+`snow` provides a special function to do the same operation:
+
+```{r}
+point_groups <- snow::splitList(points, 3)
+str(point_groups, max.level = 1)
+```
+
+
+### 2-level map-reduce
+
+Let us now create a single computer cluster with all the CPUs available:
+
+```{r}
+# library(doSNOW)
+
+n_cpus <- parallel::detectCores()
+cluster <- makeCluster(n_cpus, type = "SOCK")
+registerDoSNOW(cluster)
+```
+
+Now the cluster is running `n_cpus` new R processes. You needs to export to them the definition of the function you have in your environment. You can use the `clusterExport` function providing a list of strings with function names. NB: in case you re-define a function you will need to re-export it.
+
+```{r}
+# export dependencies in cluster
+clusterExport(cluster, list("in_circle", "reduce", "%>%"))
+```
+
+
+```{r}
+tic()
+point_groups <- splitList(points, n_cpus)
+# outer map-reduce level: parallel
+snow::parLapply(cl = cluster,
+                x = point_groups,
+                fun = in_circle_and_reduce) %>%
+  reduce(`+`) %>% 
+  counter_to_pi(n)
+toc()
+```
+
+
+```{r}
+stopCluster(cluster)
+```
+
+
+
+## Vector function to optimize the reduce operation
+
+Some binary functions have the correspondent n-ary function or vector function (that takes a vector):
+
+```{r}
+# binary function
+`+`(1,2)
+# this will NOT work
+# `+`(1,2,3)
+
+# n-ary function
+sum(1,2,3)
+# vector function
+sum(c(1,2,3))
+```
+
+Therefore the reduce operation can be done more efficiently:
+
+```{r}
+tic()
+lapply(points, in_circle) %>% 
+  unlist() %>%      # list to vector
+  sum() %>%         # vector reducer: usually faster than reduce(...)
+  counter_to_pi(n)
+toc()
+```
+
+
+
+
+## Confilcts between `parallel` and `doSNOW`
+
+`parallel` and `doSNOW` provide a set of functions with the same name, but different specifications. It is better to load only one of the two packages at a time.
+
+Here an example:
+
+```{r eval=FALSE}
+help('parLapply', package = 'parallel') # see argument `x`
+help('parLapply', package = 'snow') # see argument `x` and `X`
+```
+
